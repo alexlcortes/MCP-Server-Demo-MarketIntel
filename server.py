@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Any
 from fastmcp import FastMCP
 from tavily import TavilyClient
 
+# Loads environment variables from a .env file, parsing key=value pairs and handling quoted values.
 def _load_env_file() -> None:
     env_file = Path(__file__).with_name(".env")
     if not env_file.is_file():
@@ -22,6 +23,7 @@ def _load_env_file() -> None:
 
 _load_env_file()
 
+# Helper function to perform a Tavily search and format the results with query, answer, and structured result data.
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 if not TAVILY_API_KEY:
     raise ValueError("Please set the TAVILY_API_KEY environment variable before starting the server.")
@@ -29,6 +31,7 @@ if not TAVILY_API_KEY:
 tavily = TavilyClient(api_key=TAVILY_API_KEY)
 mcp = FastMCP(name="MarketIntel")
 
+# Performs a Tavily search with custom parameters and returns formatted results including query, answer, and result details.
 def _tsearch(query: str, **kw) -> Dict[str, Any]:
     resp = tavily.search(query=query, **kw)
     return {
@@ -40,6 +43,7 @@ def _tsearch(query: str, **kw) -> Dict[str, Any]:
         ],
     }
 
+# Returns a list of available market research topics as an MCP resource.
 @mcp.resource("resource://market/topics")
 def market_topics() -> List[str]:
     return [
@@ -48,12 +52,14 @@ def market_topics() -> List[str]:
         "Feature comparison", "Regional GTM"
     ]
 
+# Searches for a company overview including founding, HQ, products, business model, and recent news.
 @mcp.tool(annotations={"title": "Company Overview"})
 def company_overview(name: str, region: Optional[str] = None, max_results: int = 8):
     reg = f" in {region}" if region else ""
     q = f"Company overview of {name}{reg}: founding, HQ, products, business model, recent news"
     return _tsearch(q, max_results=max_results, search_depth="advanced", include_answer="advanced")
 
+# Identifies top competitors of a company, optionally filtered by category and region.
 @mcp.tool(annotations={"title": "List Competitors"})
 def list_competitors(name: str, category: Optional[str] = None, region: Optional[str] = None, max_results: int = 10):
     cat = f" in {category}" if category else ""
@@ -61,6 +67,7 @@ def list_competitors(name: str, category: Optional[str] = None, region: Optional
     q = f"Top competitors of {name}{cat}{reg}; include upstart challengers"
     return _tsearch(q, max_results=max_results, search_depth="advanced", include_answer="advanced")
 
+# Maps a company's product portfolio including suites, tiers, and segments, with optional keyword filtering and content extraction.
 @mcp.tool(annotations={"title": "Product Portfolio Map"})
 def product_portfolio(company: str, focus_keywords: Optional[List[str]] = None, max_results: int = 12):
     kws = f" ({', '.join(focus_keywords)})" if focus_keywords else ""
@@ -75,6 +82,7 @@ def product_portfolio(company: str, focus_keywords: Optional[List[str]] = None, 
             extracted = {"error": f"extract_failed: {e}"}
     return {"search": search_res, "extracted": extracted}
 
+# Retrieves pricing information for a product or company including tiers, billing cycles, and discounts.
 @mcp.tool(annotations={"title": "Pricing Snapshot"})
 def pricing_snapshot(product_or_company: str, region: Optional[str] = None, currency_hint: Optional[str] = None, max_results: int = 10):
     reg = f" in {region}" if region else ""
@@ -82,11 +90,13 @@ def pricing_snapshot(product_or_company: str, region: Optional[str] = None, curr
     q = f"Pricing for {product_or_company}{reg}{cur}: list price, tiers, billing cycles, discounts, hidden fees"
     return _tsearch(q, max_results=max_results, search_depth="advanced", include_answer="advanced")
 
+# Fetches recent news about a company including funding, acquisitions, launches, and leadership changes within a specified time period.
 @mcp.tool(annotations={"title": "Recent News Pulse"})
 def recent_news_pulse(company: str, days: int = 30, max_results: int = 10):
     q = f"Recent news about {company}: funding, acquisitions, launches, leadership"
     return _tsearch(q, topic="news", days=days, max_results=max_results, search_depth="advanced", include_answer="advanced")
 
+# Generates a structured prompt for comprehensive competitor analysis including overview, competitors, portfolio, news, and strategic assessment.
 @mcp.prompt
 def competitor_analysis_prompt(company: str, region: str = "", category: str = "") -> str:
     return (
@@ -96,6 +106,7 @@ def competitor_analysis_prompt(company: str, region: str = "", category: str = "
         + ". Steps: 1) Company Overview 2) List Competitors 3) Portfolio & Pricing 4) News Pulse 5) SWOT+Five Forces."
     )
 
+# Starts the MarketIntel MCP server using Server-Sent Events (SSE) transport.
 def main():
     print("\n Starting MarketIntel MCP server...")
     mcp.run(transport="sse")
