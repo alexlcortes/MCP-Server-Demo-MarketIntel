@@ -1,0 +1,17 @@
+[project]
+name = "mcp-demo-1"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastmcp>=3.4.7",
+    "tavily-python>=0.8.0",
+]
+
+[project.scripts]
+mcp-demo-1 = "mcp_demo_1:main"
+
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13.0"]
+build-backend = "uv_build"
